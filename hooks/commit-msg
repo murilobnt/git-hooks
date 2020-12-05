@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+
+import requests
+import json
+import re
+import sys
+import os
+
+try:
+    with open(".githook_state.json") as file:
+        loaded_dict = json.load(file)
+        if loaded_dict['automated']:
+            exit(0)
+except FileNotFoundError:
+    pass
+
+with open('.githook_config.json') as json_file:
+    config = json.load(json_file)
+
+header = {"Authorization" : "token " + os.environ['GITHOOKS_GHTOKEN']}
+url = f"https://api.github.com/repos/{config['repository']}/issues"
+
+response = requests.get(url, headers=header)
+if response.status_code != 200:
+    print("Something went wrong with the author and repository configuration.")
+    exit(1)
+
+data = response.json()
+gh_issues_numbers = []
+for issue in data:
+    gh_issues_numbers.append(issue['number'])
+
+with open(sys.argv[1], 'r') as file:
+    commit_message = file.readline()
+
+match = re.findall(r"\B#[0-9]+\b", commit_message)
+if not match:
+    print("No issue reference found in the string (example: #1).")
+    exit(1)
+
+issues_numbers = []
+for content in match:
+    issues_numbers.append(int(content[1:]))
+
+if any(x in gh_issues_numbers for x in issues_numbers):
+    exit(0)
+else:
+    print("The specified issues were not found")
+    exit(1)

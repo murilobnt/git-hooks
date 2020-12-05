@@ -1,0 +1,24 @@
+#!/usr/bin/python3
+
+import subprocess
+import os
+import json
+
+try:
+    with open(".githook_state.json") as file:
+        loaded_dict = json.load(file)
+        if loaded_dict['automated']:
+            os.remove(".githook_state.json")
+            exit(0)
+except FileNotFoundError:
+    pass
+
+with open('.git/COMMIT_EDITMSG') as file:
+    commit_message = file.readline()
+
+log = subprocess.check_output(['git', 'show', '--stat', '--pretty=Author: %an%nDate: %cd%nLog:' ,'HEAD'])
+
+with open(".githook_state.json", "w") as file:
+    json.dump({'automated' : True}, file)
+
+subprocess.check_output(['git', 'commit', '--amend', '-m', commit_message, '-m', log])
