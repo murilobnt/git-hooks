@@ -14,22 +14,6 @@ try:
 except FileNotFoundError:
     pass
 
-with open('.githook_config.json') as json_file:
-    config = json.load(json_file)
-
-header = {"Authorization" : "token " + os.environ['GITHOOKS_GHTOKEN']}
-url = f"https://api.github.com/repos/{config['repository']}/issues"
-
-response = requests.get(url, headers=header)
-if response.status_code != 200:
-    print("Something went wrong with the author and repository configuration.")
-    exit(1)
-
-data = response.json()
-gh_issues_numbers = []
-for issue in data:
-    gh_issues_numbers.append(issue['number'])
-
 with open(sys.argv[1], 'r') as file:
     commit_message = file.readline()
 
@@ -42,7 +26,20 @@ issues_numbers = []
 for content in match:
     issues_numbers.append(int(content[1:]))
 
-if any(x in gh_issues_numbers for x in issues_numbers):
+with open('.githook_config.json') as json_file:
+    config = json.load(json_file)
+
+header = {"Authorization" : "token " + os.environ['GITHOOKS_GHTOKEN']}
+url = f"https://api.github.com/repos/{config['repository']}/issues"
+
+response = requests.get(url, headers=header)
+if response.status_code != 200:
+    print("Something went wrong with the author and repository configuration.")
+    exit(1)
+
+data = response.json()
+
+if any(issue['number'] in issues_numbers and 'pull_request' not in issue for issue in data):
     exit(0)
 else:
     print("The specified issues were not found")
